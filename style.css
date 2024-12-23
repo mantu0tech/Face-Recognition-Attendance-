@@ -1,0 +1,47 @@
+
+
+body {
+    background-image: url('hehe.avif');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+
+table {
+    font-family: Arial, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.5);
+    border-radius: 2px;
+    border: #333;
+     /* Adjust the alpha value for transparency */
+    margin-left: 250px;
+    margin-right: 250px;
+}
+
+
+th, td {
+    border: 1px solid #333;
+    padding: 10px;
+    text-align: center;
+}
+
+
+th {
+    background-color: rgba(0, 116, 217, 0.5); /* Header background color with transparency */
+    color: white; /* Header text color */
+}
+
+
+td {
+    background-color: rgba(242, 242, 242, 0.5); /* Cell background color with transparency */
+
+
+    color: #333; /* Cell text color */
+}
