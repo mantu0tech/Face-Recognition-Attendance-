@@ -2,83 +2,77 @@ import boto3
 import requests
 import datetime
 import time
-
-
 import cv2
 
-# Credentials----------------------------------------------------------------------------------
+# AWS Credentials
 client = boto3.client('rekognition',
-                      aws_access_key_id="************************",
-                      aws_secret_access_key="*******************************************",
-                      region_name='us-east-1')
+                      aws_access_key_id="AKIAXNGUVPZPBFZAQYOG",
+                      aws_secret_access_key="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",
+                      region_name='ap-south-1')
 
-# Capture images for every 1 hour and store the image with current date and time -----------------------------------------------------------------------------------
-for j in range(0, 6):
-    current_time = datetime.datetime.now().strftime("%d-%m-%y  %H-%M-%S ")
-    print(current_time)
-    camera = cv2.VideoCapture(0)
+# Capture Image
+current_time = datetime.datetime.now().strftime("%d-%m-%y  %H-%M-%S ")
+print(current_time)
 
-    while True:
-        # Capture the video frame by frame
-        ret, frame = camera.read()
+camera = cv2.VideoCapture(0)
 
-        # Display the resulting frame
-        cv2.imshow('frame', frame)
-        # Check if the image needs to be captured
-        if cv2.waitKey(1) & 0xFF == ord(' '):
-            # Save the captured frame as an image
-            cv2.imwrite('img/' + current_time + '.jpg', frame)
-            print("Image captured!")
-            # Reset the flag
-            break
+while True:
+    ret, frame = camera.read()
+    cv2.imshow('frame', frame)
 
-        # Check if the 'q' button is pressed to quit
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            exit()
+    # Capture image when space (' ') is pressed
+    if cv2.waitKey(1) & 0xFF == ord(' '):
+        image_path = 'img/' + current_time + '.jpg'
+        cv2.imwrite(image_path, frame)
+        print("Image captured!")
+        break
 
-    del (camera)
+    # Quit on pressing 'q'
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        camera.release()
+        cv2.destroyAllWindows()
+        exit()
 
-    # Send the captured image to AWS S3 Bucket--------------------------------------------------------------------------------------
-    clients3 = boto3.client('s3', aws_access_key_id="AKIAXQKH4EDNZYI5VFGW",
-                            aws_secret_access_key="YA4TX/l9LLgR7fwuJnlgZq1ZHga+tWo+M/Fu6Dhl", region_name='us-east-1')
-    # clients3.upload_file("Hourly Class Images/"+current_time+'.jpg', 'add your S3 bucket name', current_time+'.jpg')
+# Release camera and close window
+camera.release()
+cv2.destroyAllWindows()
 
-    clients3.upload_file("img/" + current_time + '.jpg', 'dun-dun', current_time + '.jpg')
+# Upload captured image to S3
+clients3 = boto3.client('s3', 
+                        aws_access_key_id="AKIAXNGUVPZPBFZAQYOG",
+                        aws_secret_access_key="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",
+                        region_name='ap-south-1')
 
-    # Recognize students in captured image ---------------------------------------------------------------------------------------
-    image_path = 'img/' + current_time + '.jpg'
-    with open(image_path, 'rb') as source_image:
-        source_bytes = source_image.read()
-    print(type(source_bytes))
+clients3.upload_file(image_path, 'attendence-system', current_time + '.jpg')
 
-    print("Recognition Service")
-    response = client.detect_custom_labels(
+# Recognize students in captured image
+with open(image_path, 'rb') as source_image:
+    source_bytes = source_image.read()
 
-        # Update the Recognition ARN with yours
+print("Recognition Service")
+response = client.detect_custom_labels(
+    ProjectVersionArn='arn:aws:rekognition:ap-south-1:509399629406:project/facereckognition/version/facereckognition.2025-02-14T07.45.39/1739499340299',
+    Image={'Bytes': source_bytes},
+)
 
-        ProjectVersionArn='arn:aws:rekognition:us-east-1:516083687643:project/Face-Rek-Att-Sys/version/Face-Rek-Att-Sys.2023-10-29T21.42.26/1698595945940',
+print(response)
+if not response.get('CustomLabels'):
+    print('Not identified')
+else:
+    student_name = response['CustomLabels'][0]['Name']
+    print(student_name)
 
-        Image={
-            'Bytes': source_bytes
-        },
+    # Update attendance in DynamoDB via API call
+    url = f"https://sudlxfnm6e.execute-api.ap-south-1.amazonaws.com/default/AttendFunction?Name={student_name}"
+    resp = requests.get(url)
+    print("Attendance Mark Successful")
 
-    )
+    if resp.status_code == 200:
+        print("Successful")
 
-    print(response)
-    if not len(response['Custom Labels']):
-        print('Not identified')
+# Wait for 6 minutes before closing (if needed)
+time.sleep(10)
 
-    else:
-        str = response['Custom Labels'][0]['Name']
-        print(str)
-
-        # Update the attendance of recognized student in DynamoDB by calling the API
-
-        url = "https://kx62h8ef40.execute-api.ap-south-1.amazonaws.com/Name/AttendTable?Name=" + str
-
-        resp = requests.get(url)
-        print("Attendance Mark Successful")
-        if resp.status_code == 200:
-            print("Success")
-
-    time.sleep(3600)
+# Exit the script completely
+print("Exiting script...")
+exit()
